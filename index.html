@@ -1,0 +1,448 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Демо-журнал флага</title><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{--bg:#eef1f4;--surface:#ffffff;--ink:#111820;--muted:#5b6673;--line:#d6dce3;--hover:#e6ebf1;--sel:#dde7fb;
+--win:#1b8f62;--loss:#cf3d33;--wait:#9a6b00;--imp:#2962ff;--flag:#e0463c;--entry:#1f9d55;--ob:#7b4fd6;--tp:#0e8f8c;--up:#1f9d6b;--down:#d9463b;
+--sans:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,sans-serif;--mono:"JetBrains Mono",ui-monospace,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0e1217;--surface:#161b22;--ink:#e6edf3;--muted:#8b98a5;--line:#27303a;--hover:#1d242d;--sel:#1f2d45;
+--win:#3cc48a;--loss:#f06b61;--wait:#e0b44c;--imp:#5b8cff;--flag:#f0675e;--entry:#3cc47a;--ob:#a98bf0;--tp:#2cc2bd;--up:#3cc48a;--down:#f06b61}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0e1217;--surface:#161b22;--ink:#e6edf3;--muted:#8b98a5;--line:#27303a;--hover:#1d242d;--sel:#1f2d45;
+--win:#3cc48a;--loss:#f06b61;--wait:#e0b44c;--imp:#5b8cff;--flag:#f0675e;--entry:#3cc47a;--ob:#a98bf0;--tp:#2cc2bd;--up:#3cc48a;--down:#f06b61}
+html,body{height:auto}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans)}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:20px 48px}
+h1{font:700 clamp(24px,4vw,34px)/1.15 var(--sans);margin:0 0 6px;letter-spacing:-.01em;text-wrap:balance}
+.lede{color:var(--muted);max-width:80ch;margin:0 0 8px}
+.warn{font-size:13px;color:var(--muted);margin:0 0 14px;max-width:90ch}
+.strip{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font:13px var(--mono);color:var(--muted);margin:0 0 12px}
+.strip b{color:var(--ink);font-weight:600}
+.pill{font:600 12px var(--sans);border-radius:999px;padding:3px 10px;border:1px solid currentColor}
+.pill.ok{color:var(--win)} .pill.bad{color:var(--loss)}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin:0 0 14px}
+.sum .panel{padding:10px 14px}
+.sum h2{font:600 12px var(--sans);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.sum p{margin:0;font:14px var(--mono);font-variant-numeric:tabular-nums}
+.coins{margin:0 0 14px}
+.coins h2{font:600 12px var(--sans);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px}
+.card{display:flex;flex-direction:column;gap:2px;text-align:left;font:13px var(--sans);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px 6px;cursor:pointer}
+.card:hover{background:var(--hover)} .card[aria-pressed="true"]{background:var(--sel);border-color:var(--imp)}
+.card b{font:600 14px var(--mono)} .card .st{font-size:12px;color:var(--muted)} .card .st.on{color:var(--wait);font-weight:600}
+.card svg{width:100%;height:34px;display:block}
+.coins .lbl{font-size:13px;color:var(--muted);margin-right:4px}
+.coin{font:500 12.5px var(--mono);border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:2px 8px}
+.coin.top{border-color:var(--ink);font-weight:600}
+.coin small{color:var(--muted);font-weight:400}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted);margin:0 0 12px}
+.legend i{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.controls{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:12px}
+select{font:14px var(--sans);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
+.count{font:13px var(--mono);color:var(--muted)}
+button:focus-visible,select:focus-visible,.row:focus-visible{outline:2px solid var(--imp);outline-offset:2px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+@media (min-width:1000px){.grid{grid-template-columns:minmax(0,2.1fr) minmax(320px,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.chartbox{padding:10px}
+.tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px}
+.tools button{font:500 13px var(--sans);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:5px 9px;cursor:pointer;min-height:34px}
+.tools button[aria-pressed="true"]{background:var(--sel);border-color:var(--imp)}
+.tools .sw{width:28px;height:28px;min-height:0;border-radius:50%;padding:0;border:3px solid var(--surface);box-shadow:0 0 0 1px var(--line)}
+.tools .sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--ink)}
+.tools .sep{width:1px;height:24px;background:var(--line)}
+.dstat{font:12px var(--mono);color:var(--muted)}
+.cwrap{position:relative}
+#chart{position:relative;z-index:0}
+#ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:10}
+#ov.on{pointer-events:auto;cursor:crosshair;touch-action:none}
+.tin{position:absolute;z-index:11;display:none;gap:4px;align-items:center}
+.tin input{font:14px var(--sans);padding:5px 7px;border:1px solid var(--imp);border-radius:6px;background:var(--surface);color:var(--ink);width:min(220px,50vw)}
+.tin button{font:600 13px var(--sans);border:1px solid var(--imp);background:var(--imp);color:#fff;border-radius:6px;padding:5px 10px}
+.dhint{font-size:12.5px;color:var(--muted);margin:6px 0 0;min-height:1.2em}
+#chart{width:100%;height:min(62vh,560px);min-height:320px}
+.bar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+.nav{display:flex;gap:6px}
+.nav button{font:600 14px var(--sans);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px 16px;padding:10px 12px 12px;border-top:1px solid var(--line);font-size:13px}
+.facts div{display:flex;flex-direction:column;min-width:0}
+.facts span{color:var(--muted);font-size:11.5px;letter-spacing:.03em;text-transform:uppercase}
+.facts b{font:600 14px var(--mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.title{font:600 16px var(--sans)}
+.pos{color:var(--win)} .neg{color:var(--loss)} .wt{color:var(--wait)} .mut{color:var(--muted)}
+.list{max-height:min(78vh,760px);overflow:auto}
+.row,.lhead{display:grid;grid-template-columns:72px minmax(0,1fr) 44px minmax(0,1.6fr);gap:8px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--line)}
+.row{cursor:pointer;font:13px var(--mono);font-variant-numeric:tabular-nums}
+.row:hover{background:var(--hover)} .row[aria-selected="true"]{background:var(--sel)}
+.row .d{color:var(--muted)} .row .bf{font:11px var(--sans);color:var(--muted)}
+.lhead{position:sticky;top:0;background:var(--surface);z-index:1;font:600 11.5px var(--sans);color:var(--muted);letter-spacing:.03em;text-transform:uppercase}
+.empty{padding:20px 12px;color:var(--muted);max-width:60ch}
+.note{font-size:13px;color:var(--muted);max-width:90ch;margin:16px 0 0}
+a{color:var(--imp)}
+</style>
+
+<div class="wrap">
+<h1>Демо-журнал флага</h1>
+<p class="lede">Сканер каждые 5 минут смотрит 5-минутные свечи всех фьючерсов Binance USDT-M, которые сегодня проходят скринер Копатыча, и записывает каждый сетап флага по вашему последнему правилу. По каждому сетапу ведётся одна виртуальная сделка: лимитный вход на ретесте пробитой линии. Время московское.</p>
+<p class="warn">Сделки виртуальные: они посчитаны по свечам, ордера никто не выставлял. Открыть демо-сделку по сетапу вы можете сами. Это исследование, а не инвестиционный совет; торговля фьючерсами с плечом может обнулить депозит.</p>
+
+<div class="strip" id="strip">Загрузка…</div>
+<div class="sum" id="sum"></div>
+<section class="coins" aria-label="Монеты в работе"><h2 id="coinsh">Монеты в работе</h2><div class="cards" id="coins"></div></section>
+
+<div class="legend">
+<span><i style="background:var(--imp)"></i>импульс и его длина от края флага</span>
+<span><i style="background:var(--flag)"></i>линия по трём точкам и край флага</span>
+<span><i style="background:var(--entry)"></i>вход — ретест пробитой линии</span>
+<span><i style="background:var(--loss)"></i>стоп</span>
+<span><i style="background:var(--tp)"></i>тейк</span>
+</div>
+
+<div class="controls">
+<select id="flt" aria-label="Какие сетапы"><option value="live">После запуска журнала</option><option value="all">Все, включая проверку на сегодняшней истории</option><option value="hist">История 12 месяцев — для насмотренности</option></select>
+<select id="side" aria-label="Направление"><option value="all">Лонг и шорт</option><option value="L">Только лонг</option><option value="S">Только шорт</option></select>
+<span class="count" id="count"></span>
+</div>
+
+<div class="grid">
+<section class="panel" aria-label="График сетапа">
+<div class="chartbox">
+<div class="tools" id="tools" role="toolbar" aria-label="Рисование на графике">
+<button type="button" data-tool="line" aria-pressed="false">╱ Линия</button>
+<button type="button" data-tool="hline" aria-pressed="false">― Уровень</button>
+<button type="button" data-tool="box" aria-pressed="false">▭ Зона</button>
+<button type="button" data-tool="up" aria-pressed="false">▲ Вход вверх</button>
+<button type="button" data-tool="down" aria-pressed="false">▼ Вход вниз</button>
+<button type="button" data-tool="text" aria-pressed="false">T Текст</button>
+<button type="button" data-tool="erase" aria-pressed="false">⌫ Ластик</button>
+<span class="sep"></span><span id="sws" style="display:flex;gap:6px"></span><span class="sep"></span>
+<button type="button" id="fit">⤢ Весь график</button><button type="button" id="undo">Отменить</button><button type="button" id="clr">Очистить</button>
+<span class="dstat" id="dstat"></span>
+</div>
+<div class="cwrap"><div id="chart"></div><svg id="ov" aria-hidden="true"></svg>
+<div class="tin" id="tin"><input id="tinput" type="text" maxlength="80" placeholder="Текст на графике"><button type="button" id="tok">OK</button></div></div>
+<p class="dhint" id="dhint">Выберите инструмент и нажмите на график. Линия и зона — два нажатия. Разметка сохраняется для каждого графика, Claude её читает.</p>
+</div>
+<div class="bar"><div class="nav"><button id="prev" type="button">← Пред.</button><button id="next" type="button">След. →</button></div><span class="title" id="ttl"></span></div>
+<div class="facts" id="facts"></div>
+</section>
+<section class="panel" aria-label="Список сетапов">
+<div class="lhead"><span>Пробой</span><span>Монета</span><span>Ст.</span><span>Итог</span></div>
+<div class="list" id="list"></div>
+</section>
+</div>
+<p class="note">Правило (спецификация notes/research/L_kflag_spec.md, дополнения 1, 3–5, 7–11, 13, 14, 18, 20): импульс — 3 и больше 5-минутных свечей одного цвета подряд, размах ≥ 4 ATR; импульс заканчивается на самой высокой свече серии (для шорта — на самой низкой), следующие свечи серии уже относятся к флагу; если первая встречная свеча после серии тенью выше вершины — вершина импульса на ней; флаг длится не дольше 24 часов и может откатить импульс почти целиком — лишь бы начало импульса не было пробито; импульс с флагом не находится внутри встречного импульса слева — серии чисто красных свечей (для шорта — зелёных; одна большая свеча тоже считается, а если серия стоит вплотную перед импульсом — вместе с тенью первой свечи импульса) не меньше нашего импульса, закончившейся не раньше чем за 48 свечей и ещё не пробитой; прямая линия через вершину импульса и две следующие вершины, каждая с отходом от линии; третья вершина должна дойти до линии (недолёт не больше 0,1 ATR); прокол линии тенью без закрытия перестраивает линию (прокол становится точкой 2); закрытие свечи за линией — пробой (тело за линией или два закрытия подряд). Вход лимиткой на пробитой линии, один раз на сетап. Стоп — за край флага на 0,2 ATR, тейк — длина импульса, отложенная от точки входа. Сетап берётся, только если длина импульса, отложенная от края флага, даёт не меньше двух стопов до цели (1:2). Ордер отменяется, если цена дошла до тейка раньше входа, свеча закрылась за стопом или прошло 24 часа. Издержки 0,07% на сторону, R — результат в рисках после издержек. Скринер: вчерашний оборот ≥ $100 млн и размах дня ≥ 10%, плюс в течение дня — оборот за 24 ч ≥ $100 млн и изменение за 24 ч ≥ 10% или за час ≥ 5%; BTC, ETH и стейблкоины исключены, «топ-5» — пятёрка по обороту × размаху. В режиме «История 12 месяцев» — 54 сетапа того же скринера за 01.10.2025–30.09.2026 по правилу до дополнений 9–11; новые записи появляются примерно раз в несколько дней на весь список монет. <a href="https://claude.ai/artifact/C3gTpZ1mRE4bCRqdBqDtTV">Сделки правила на истории</a>.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(() => {
+const MSK = 3 * 3600;
+const CANCEL = {tp_before_fill: "отменён: тейк раньше входа", close_beyond_sl: "отменён: закрытие за стопом", timeout: "отменён: 24 ч без отката"};
+let J = null, rows = [], hrows = null, H = null, view = [], cur = -1;
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const pad = n => String(n).padStart(2, "0");
+const dt = s => { const d = new Date((s + MSK) * 1000); return `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`; };
+const fR = r => (r > 0 ? "+" : r < 0 ? "−" : "") + Math.abs(r).toFixed(2).replace(".", ",") + "R";
+const px = x => x.toLocaleString("ru-RU", {maximumSignificantDigits: 6});
+const dec = x => { const s = px(x).split(",")[1]; return s ? s.length : 0; };
+function vstate(v) {
+  if (!v || !v.status) return ["—", "mut"];
+  if (v.status === "pending") return ["ждёт отката", "wt"];
+  if (v.status === "open") return [`в сделке ${fR(v.r_now || 0)}`, (v.r_now || 0) >= 0 ? "pos" : "neg"];
+  if (v.status === "closed") return [`${v.why === "tp" ? "тейк" : "стоп"} ${fR(v.r)}`, v.r > 0 ? "pos" : "neg"];
+  if (v.status === "cancelled") return [CANCEL[v.why] || "отменён", "mut"];
+  return ["вход вне стоп–тейк", "mut"];
+}
+const short = v => { const [t, c] = vstate(v); return [t.startsWith("отменён") ? "отменён" : t, c]; };
+
+// The chart is rebuilt from scratch for every setup / coin shown (fresh(), called by draw() and showCoin()): on his
+// phone a reused chart sometimes kept 200 candles but an empty time scale (blank pane, visible range null).
+let chart, candles, extras = [], plines = [], lastW = 0;
+function fresh() {
+  if (chart) chart.remove();
+  chart = LightweightCharts.createChart($("chart"), {autoSize: true, timeScale: {timeVisible: true, secondsVisible: false, rightOffset: 6, fixLeftEdge: true},
+    kineticScroll: {touch: false, mouse: false}, localization: {locale: "ru-RU"}, crosshair: {mode: 0}});
+  candles = chart.addCandlestickSeries({borderVisible: false}); extras = []; plines = [];
+  chart.timeScale().subscribeVisibleLogicalRangeChange(() => { if (typeof repaint === "function") repaint(); });
+  chart.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r && T.length && Math.min(r.to, T.length - 1) - Math.max(r.from, 0) < 12) chart.timeScale().fitContent(); });
+  window.kfChart = chart;  // debugging handle
+  applyTheme();
+}
+new ResizeObserver(e => { const w = e[0].contentRect.width; if (chart && lastW < 50 && w >= 50) chart.timeScale().fitContent(); lastW = w; }).observe($("chart"));
+function applyTheme() {
+  chart.applyOptions({layout: {background: {type: "solid", color: css("--surface")}, textColor: css("--muted"), fontFamily: css("--mono")},
+    grid: {vertLines: {color: css("--line")}, horzLines: {color: css("--line")}}, rightPriceScale: {borderColor: css("--line")}, timeScale: {borderColor: css("--line")}});
+  candles.applyOptions({upColor: css("--up"), downColor: css("--down"), wickUpColor: css("--up"), wickDownColor: css("--down")});
+}
+function theme() {
+  if (!chart) fresh(); else applyTheme();
+  if (cur >= 0) draw(view[cur], false);
+  if (typeof repaint === "function") repaint();
+}
+// ---------- drawing on the chart (Rodion 2026-10-01): lines, levels, zones, entry arrows, text; saved per chart in db
+const COLORS = ["#22a861", "#e0463c", "#2f6bff", "#f08c00", "#8e5bd9", "#7a8591"];
+const NS = "http://www.w3.org/2000/svg", ov = $("ov");
+let dKey = null, dItems = [], dHist = [], tool = null, color = COLORS[0], pend = null, hover = null, T = [], dbp = null, clrArm = 0;
+const getDB = () => dbp || (dbp = (window.claude && window.claude.use ? window.claude.use("db") : Promise.resolve(null)).catch(() => null));
+const lsGet = k => { try { return JSON.parse(localStorage.getItem("kfd_" + k) || "null"); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem("kfd_" + k, JSON.stringify(v)); } catch (e) {} };
+const dstat = t => { $("dstat").textContent = t; };
+function setTimes(bars) { T = bars.map(b => b[0]); }                        // UTC seconds of the bars on screen
+function l2t(l) { const n = T.length; if (!n || l == null) return null; const i = Math.floor(l);
+  if (i < 0) return T[0] + l * 300; if (i >= n - 1) return T[n - 1] + (l - n + 1) * 300; return T[i] + (l - i) * (T[i + 1] - T[i]); }
+function t2l(t) { const n = T.length; if (!n) return null; if (t <= T[0]) return (t - T[0]) / 300; if (t >= T[n - 1]) return n - 1 + (t - T[n - 1]) / 300;
+  let lo = 0, hi = n - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= t) lo = m; else hi = m; } return lo + (t - T[lo]) / (T[hi] - T[lo]); }
+const X = t => chart.timeScale().logicalToCoordinate(t2l(t));
+const Y = p => candles.priceToCoordinate(p);
+function at(ev) { const r = ov.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
+  return {x, y, t: Math.round(l2t(chart.timeScale().coordinateToLogical(x))), p: candles.coordinateToPrice(y)}; }
+function el(name, attrs, parent) { const e = document.createElementNS(NS, name); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || ov).appendChild(e); return e; }
+function paint() {
+  ov.textContent = ""; if (!dKey) return;
+  const W = ov.clientWidth - chart.priceScale("right").width(), H = ov.clientHeight - chart.timeScale().height();
+  const defs = el("defs", {}); const cp = el("clipPath", {id: "pane"}, defs); el("rect", {x: 0, y: 0, width: Math.max(0, W), height: Math.max(0, H)}, cp);
+  const g = el("g", {"clip-path": "url(#pane)"}), halo = css("--surface");
+  const items = pend ? dItems.concat([{...pend, t2: hover ? hover.t : pend.t1, p2: hover ? hover.p : pend.p1, prev: 1}]) : dItems;
+  for (const d of items) {
+    const c = d.c || COLORS[0], dash = d.by === "claude" ? "6 4" : null;
+    if (d.k === "line") { const a = el("line", {x1: X(d.t1), y1: Y(d.p1), x2: X(d.t2), y2: Y(d.p2), stroke: c, "stroke-width": 2.5, "stroke-linecap": "round"}, g); if (dash) a.setAttribute("stroke-dasharray", dash); }
+    else if (d.k === "hline") { const y = Y(d.p); const a = el("line", {x1: 0, y1: y, x2: W, y2: y, stroke: c, "stroke-width": 2}, g); if (dash) a.setAttribute("stroke-dasharray", dash);
+      const tx = el("text", {x: W - 6, y: y - 5, "text-anchor": "end", fill: c, "font-size": 12, "font-family": css("--mono"), stroke: halo, "stroke-width": 3, "paint-order": "stroke"}, g); tx.textContent = px(d.p); }
+    else if (d.k === "box") { const x1 = X(d.t1), x2 = X(d.t2), y1 = Y(d.p1), y2 = Y(d.p2);
+      const a = el("rect", {x: Math.min(x1, x2), y: Math.min(y1, y2), width: Math.abs(x2 - x1), height: Math.abs(y2 - y1), fill: c, "fill-opacity": .16, stroke: c, "stroke-width": 1.5}, g); if (dash) a.setAttribute("stroke-dasharray", dash); }
+    else if (d.k === "up" || d.k === "down") { const x = X(d.t), y = Y(d.p), s = d.k === "up" ? 1 : -1;
+      el("path", {d: `M${x},${y} l-8,${14 * s} h5 v${12 * s} h6 v${-12 * s} h5 z`, fill: c, stroke: halo, "stroke-width": 1}, g);
+      const tx = el("text", {x: x + 11, y: y + 18 * s + 4, fill: c, "font-size": 12, "font-family": css("--mono"), stroke: halo, "stroke-width": 3, "paint-order": "stroke"}, g); tx.textContent = px(d.p); }
+    else if (d.k === "text") { const tx = el("text", {x: X(d.t), y: Y(d.p), fill: c, "font-size": 14, "font-weight": 600, "font-family": css("--sans"), stroke: halo, "stroke-width": 3.5, "paint-order": "stroke"}, g); tx.textContent = d.s; }
+  }
+  if (pend && !hover) el("circle", {cx: X(pend.t1), cy: Y(pend.p1), r: 4, fill: pend.c}, g);
+}
+let raf = 0; const repaint = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; paint(); }); };
+// a swipe on a phone can fling the view past the last candle -> blank chart; snap back when no candle is visible
+$("fit").addEventListener("click", () => { chart.timeScale().fitContent(); diag("кнопка"); });
+// diagnostics for the blank-chart report on his phone: errors and chart state go into the hint line under the chart
+function diag(why) { try { const r = chart.timeScale().getVisibleLogicalRange(), el = $("chart"), cv = el.querySelectorAll("canvas");
+  $("dhint").textContent = `[${why}] свечей ${candles.data().length}, видно ${r ? Math.round(r.from) + "…" + Math.round(r.to) : "—"}, окно ${el.clientWidth}×${el.clientHeight}, dpr ${devicePixelRatio}, холстов ${cv.length}, первый ${cv[0] ? cv[0].width + "×" + cv[0].height : "—"}`; }
+  catch (e) { $("dhint").textContent = "диагностика: " + e.message; } }
+window.addEventListener("error", e => { $("dhint").textContent = "Ошибка: " + e.message + " (" + (e.lineno || "") + ")"; });
+window.addEventListener("unhandledrejection", e => { $("dhint").textContent = "Ошибка: " + (e.reason && e.reason.message || e.reason); });
+new ResizeObserver(repaint).observe($("chart"));
+["pointermove", "wheel", "pointerup", "touchmove"].forEach(e => $("chart").addEventListener(e, repaint, {passive: true}));
+async function dLoad(key, bars) {
+  setTimes(bars); dKey = key; dItems = []; dHist = []; pend = null; hover = null; paint();
+  const local = lsGet(key); if (local) { dItems = local.items || []; paint(); }
+  const db = await getDB(); if (!db || dKey !== key) { dstat(db ? "" : "сохраняется на этом устройстве"); return; }
+  try { const snap = await db.doc("drawings/" + key).get(); const d = snap.exists ? snap.data() : null;
+    if (dKey === key && d && Array.isArray(d.items)) { dItems = d.items; lsSet(key, {items: dItems}); paint(); } dstat(""); }
+  catch (e) { dstat("сервер недоступен — сохраняется на этом устройстве"); }
+}
+let saveT = 0;
+function dSave() {
+  const key = dKey, items = dItems.slice(); lsSet(key, {items}); dstat("сохраняю…"); clearTimeout(saveT);
+  saveT = setTimeout(async () => { const db = await getDB(); if (!db) { dstat("сохранено на этом устройстве"); return; }
+    try { await db.doc("drawings/" + key).set({key, items, updated: new Date().toISOString()}); dstat("сохранено"); }
+    catch (e) { dstat("не сохранилось на сервере — осталось на этом устройстве"); } }, 500);
+}
+function commit(d) { dHist.push(dItems.slice()); dItems = dItems.concat([{...d, by: "rodion", at: new Date().toISOString()}]); dSave(); setTool(null); paint(); }
+function setTool(t) { tool = tool === t ? null : t; pend = null; hover = null; hideTin();
+  document.querySelectorAll("#tools [data-tool]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tool === tool)));
+  ov.classList.toggle("on", !!tool && !!dKey); paint();
+  $("dhint").textContent = !tool ? "Выберите инструмент и нажмите на график. Линия и зона — два нажатия. Разметка сохраняется для каждого графика, Claude её читает."
+    : {line: "Линия: нажмите на первую точку, потом на вторую.", box: "Зона: нажмите на один угол, потом на противоположный.", hline: "Уровень: нажмите на нужную цену.",
+       up: "Нажмите, где вход в лонг.", down: "Нажмите, где вход в шорт.", text: "Нажмите, где поставить текст.", erase: "Нажмите на то, что стереть."}[tool]; }
+function hideTin() { $("tin").style.display = "none"; }
+function near(d, q) {
+  const dist = (px1, py1, px2, py2) => { const vx = px2 - px1, vy = py2 - py1, L = vx * vx + vy * vy || 1, u = Math.max(0, Math.min(1, ((q.x - px1) * vx + (q.y - py1) * vy) / L));
+    return Math.hypot(px1 + u * vx - q.x, py1 + u * vy - q.y); };
+  if (d.k === "line") return dist(X(d.t1), Y(d.p1), X(d.t2), Y(d.p2));
+  if (d.k === "hline") return Math.abs(Y(d.p) - q.y);
+  if (d.k === "box") { const x1 = Math.min(X(d.t1), X(d.t2)), x2 = Math.max(X(d.t1), X(d.t2)), y1 = Math.min(Y(d.p1), Y(d.p2)), y2 = Math.max(Y(d.p1), Y(d.p2));
+    return q.x >= x1 && q.x <= x2 && q.y >= y1 && q.y <= y2 ? 0 : 99; }
+  return Math.hypot(X(d.t) - q.x, Y(d.p) - q.y) - (d.k === "text" ? 10 : 0);
+}
+ov.addEventListener("pointerdown", ev => {
+  if (!tool || !dKey) return; ev.preventDefault(); const q = at(ev); if (q.p == null || q.t == null) return;
+  if (tool === "erase") { let bi = -1, bd = 22; dItems.forEach((d, i) => { const v = near(d, q); if (v < bd) { bd = v; bi = i; } });
+    if (bi >= 0) { dHist.push(dItems.slice()); dItems = dItems.filter((_, i) => i !== bi); dSave(); paint(); } return; }
+  if (tool === "line" || tool === "box") { if (!pend) { pend = {k: tool, t1: q.t, p1: q.p, c: color}; paint(); } else commit({k: tool, t1: pend.t1, p1: pend.p1, t2: q.t, p2: q.p, c: color}); return; }
+  if (tool === "hline") return commit({k: "hline", p: q.p, c: color});
+  if (tool === "up" || tool === "down") return commit({k: tool, t: q.t, p: q.p, c: color});
+  if (tool === "text") { const b = $("tin"); b.style.display = "flex"; b.style.left = Math.min(q.x, ov.clientWidth - 280) + "px"; b.style.top = Math.max(0, q.y - 18) + "px";
+    b.dataset.t = q.t; b.dataset.p = q.p; $("tinput").value = ""; $("tinput").focus(); }
+});
+ov.addEventListener("pointermove", ev => { if (pend) { hover = at(ev); repaint(); } });
+function textOk() { const v = $("tinput").value.trim(), b = $("tin"); if (v) commit({k: "text", t: +b.dataset.t, p: +b.dataset.p, s: v, c: color}); else setTool(null); }
+$("tok").addEventListener("click", textOk);
+$("tinput").addEventListener("keydown", e => { if (e.key === "Enter") textOk(); if (e.key === "Escape") setTool(null); e.stopPropagation(); });
+$("tools").addEventListener("click", e => { const b = e.target.closest("[data-tool]"); if (b) setTool(b.dataset.tool); });
+$("sws").innerHTML = COLORS.map((c, i) => `<button type="button" class="sw" aria-label="Цвет ${i + 1}" aria-pressed="${i === 0}" data-c="${c}" style="background:${c}"></button>`).join("");
+$("sws").addEventListener("click", e => { const b = e.target.closest(".sw"); if (!b) return; color = b.dataset.c;
+  document.querySelectorAll(".sw").forEach(x => x.setAttribute("aria-pressed", String(x === b))); if (pend) { pend.c = color; paint(); } });
+$("undo").addEventListener("click", () => { if (pend) { pend = null; paint(); return; } if (!dHist.length) return; dItems = dHist.pop(); dSave(); paint(); });
+$("clr").addEventListener("click", () => { if (!dItems.length) return; if (Date.now() - clrArm > 3000) { clrArm = Date.now(); $("clr").textContent = "Точно очистить?"; setTimeout(() => { $("clr").textContent = "Очистить"; }, 3000); return; }
+  clrArm = 0; $("clr").textContent = "Очистить"; dHist.push(dItems.slice()); dItems = []; dSave(); paint(); });
+
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", theme);
+new MutationObserver(theme).observe(document.documentElement, {attributes: true, attributeFilter: ["data-theme"]});
+
+function draw(r, fit = true) {
+  fresh();
+  const p = dec(r.E1) + 1;
+  candles.applyOptions({priceFormat: {type: "price", precision: Math.min(8, p), minMove: Math.pow(10, -Math.min(8, p))}});
+  candles.setData(r.c.map(([t, o, h, l, c]) => ({time: t + MSK, open: o, high: h, low: l, close: c})));
+  const seg = (pts, color, style = 0, w = 2) => {
+    const s = chart.addLineSeries({color, lineWidth: w, lineStyle: style, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, pointMarkersVisible: false});
+    s.setData(pts.map(([t, v]) => ({time: t + MSK, value: v}))); extras.push(s);
+  };
+  seg([[r.a, r.A], [r.b, r.B]], css("--imp"));
+  seg([[r.lc, r.Lc], [r.lc + (r.b - r.a) + 300, r.TP]], css("--imp"), 2);
+  seg([[r.b, r.B], [r.t1, r.E1]], css("--flag"));
+  seg([[r.b, r.Lc], [r.tc, r.Lc]], css("--flag"), 2, 1);
+  const pl = (price, color, title, style) => plines.push(candles.createPriceLine({price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title}));
+  pl(r.E1, css("--entry"), "Вход", 0); pl(r.SL, css("--loss"), "Стоп", 2); pl(r.TP, css("--tp"), "Тейк", 2);
+  const L = r.s === "L", mk = [];
+  r.pts.forEach((t, k) => mk.push({time: t + MSK, position: L ? "aboveBar" : "belowBar", color: css("--flag"), shape: L ? "arrowDown" : "arrowUp", text: `точка ${k + 1}`}));
+  mk.push({time: r.tc + MSK, position: L ? "aboveBar" : "belowBar", color: css("--flag"), shape: "square", text: "пробой"});
+  [["v1", "", "--entry"]].forEach(([k, n, col]) => {
+    const v = r[k];
+    if (v.entry_t) mk.push({time: v.entry_t + MSK, position: L ? "belowBar" : "aboveBar", color: css(col), shape: L ? "arrowUp" : "arrowDown", text: "вход"});
+    if (v.exit_t) mk.push({time: v.exit_t + MSK, position: (L === (v.r > 0)) ? "aboveBar" : "belowBar", color: v.r > 0 ? css("--win") : css("--loss"), shape: "circle", text: `${v.why === "tp" ? "тейк" : "стоп"} ${fR(v.r)}`});
+  });
+  candles.setMarkers(mk.sort((p, q) => p.time - q.time));
+  if (fit) { chart.timeScale().fitContent(); requestAnimationFrame(() => chart.timeScale().fitContent()); }
+  if (fit || dKey !== "s_" + r.id) dLoad("s_" + r.id, r.c); else repaint();
+}
+
+function facts(r) {
+  const L = r.s === "L", [s1, c1] = vstate(r.v1);
+  $("ttl").innerHTML = `${r.sym} · ${L ? "лонг" : "шорт"}${r.h ? ' <span class="mut">· история, до запуска журнала</span>' : r.bf ? ' <span class="mut">· до запуска журнала</span>' : ""}`;
+  const f = [["Импульс", `${dt(r.a)} → ${dt(r.b)}`], ["Линия: точки 1–3", r.pts.map(dt).map(x => x.slice(6)).join(" · ")],
+    ["Пробой подтверждён", dt(r.tc)], ["Вход · ретест линии", `${px(r.E1)}`], ["Итог", `<span class="${c1}">${s1}</span>`],
+    ["Стоп", px(r.SL)], ["Тейк", px(r.TP)], ["До тейка, стопов", (r.rr1 ?? 0).toFixed(1).replace(".", ",")],
+    ["Риск", (Math.abs(r.E1 - r.SL) / r.E1 * 100).toFixed(2).replace(".", ",") + "% цены"],
+    ["Скринер", (r.screen === "hour" ? "добавлена за день" : "список дня") + (r.top5 ? " · топ-5" : "")]];
+  $("facts").innerHTML = f.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
+}
+
+function select(i, scroll = true) {
+  if (!view.length) return;
+  cur = Math.max(0, Math.min(view.length - 1, i));
+  const r = view[cur];
+  document.querySelectorAll(".row[aria-selected=true]").forEach(x => x.setAttribute("aria-selected", "false"));
+  const row = $("list").querySelector(`[data-i="${cur}"]`);
+  if (row) { row.setAttribute("aria-selected", "true"); if (scroll) row.scrollIntoView({block: "nearest"}); }
+  document.querySelectorAll(".card[aria-pressed=true]").forEach(x => x.setAttribute("aria-pressed", "false"));
+  facts(r); draw(r);
+}
+
+function summary() {
+  const live = rows.filter(r => !r.bf);
+  const block = (k, name) => {
+    const v = live.map(r => r[k]), cl = v.filter(x => x.status === "closed"), w = cl.filter(x => x.r > 0).length, s = cl.reduce((a, x) => a + x.r, 0);
+    const op = v.filter(x => x.status === "open").length, pe = v.filter(x => x.status === "pending").length, ca = v.filter(x => x.status === "cancelled" || x.status === "invalid").length;
+    return `<section class="panel"><h2>${name}</h2><p>закрыто ${cl.length} · в плюсе ${w} · <span class="${s > 0 ? "pos" : s < 0 ? "neg" : ""}">${cl.length ? fR(s) : "0R"}</span></p><p class="mut">в сделке ${op} · ждут ${pe} · отменено ${ca}</p></section>`;
+  };
+  $("sum").innerHTML = `<section class="panel"><h2>Сетапы после запуска</h2><p>${live.length}</p><p class="mut">проверка на истории дня: ${rows.length - live.length}</p></section>` + block("v1", "Сделки — вход на ретесте линии");
+}
+
+async function render() {
+  const f = $("flt").value, side = $("side").value;
+  if (f === "hist" && !hrows) {
+    $("count").textContent = "Загрузка истории…";
+    try { H = await (await fetch("data/history.json")).json(); hrows = H.setups; } catch (e) { hrows = []; }
+  }
+  const src = f === "hist" ? hrows : rows;
+  view = src.filter(r => (f !== "live" || !r.bf) && (side === "all" || r.s === side));
+  $("count").textContent = `${view.length} сетапов` + (f === "hist" ? " · " + histLine(view) : "");
+  $("list").innerHTML = view.length ? view.map((r, i) => { const [a, ca] = short(r.v1);
+    return `<div class="row" role="option" tabindex="0" aria-selected="false" data-i="${i}"><span class="d">${dt(r.tc)}</span><span>${r.sym}${r.bf ? ' <span class="bf">история</span>' : ""}</span><span>${r.s === "L" ? "лонг" : "шорт"}</span><span class="${ca}">${a}</span></div>`; }).join("")
+    : `<div class="empty">${rows.length ? "С такими фильтрами сетапов нет." : "Сетапов пока нет."} По истории правило находит сетап примерно раз в несколько дней на весь список монет; журнал пополняется сам. Примеры — в режиме «История 12 месяцев».</div>`;
+  if (view.length) select(0); else if (J.coins.some(c => c.c)) { const i = J.coins.reduce((bi, c, k) => ((c.w ? c.w.stage : 0) > (J.coins[bi].w ? J.coins[bi].w.stage : 0) ? k : bi), 0); showCoin(i); } else { $("ttl").textContent = ""; $("facts").innerHTML = ""; fresh(); dKey = null; paint(); }
+}
+
+function histLine(v) {
+  const one = k => { const cl = v.map(r => r[k]).filter(x => x.status === "closed"), w = cl.filter(x => x.r > 0).length, s = cl.reduce((a, x) => a + x.r, 0);
+    return `${cl.length} закрыто, в плюсе ${w}, ${fR(s)}`; };
+  const st = (H && H.status) || {};
+  return `сделки: ${one("v1")}` + (st.coin_days ? ` · ${st.coin_days} монето-дней в скринере` : "");
+}
+
+function head() {
+  const st = J.status || {}, last = st.last_pass ? Date.parse(st.last_pass) / 1000 : 0, age = J.built - last;
+  const ok = last && age < 20 * 60 && Date.now() / 1000 - J.built < 20 * 60;
+  $("strip").innerHTML = `<span class="pill ${ok ? "ok" : "bad"}">${ok ? "сканер работает" : "данные устарели — сканер на Маке не отвечает"}</span>` +
+    `<span>последний проход <b>${last ? dt(last) : "—"}</b></span><span>страница собрана <b>${dt(J.built)}</b></span>` +
+    `<span>журнал ведётся с <b>${st.first_start ? dt(Date.parse(st.first_start) / 1000) : "—"}</b></span>`;
+  $("coinsh").textContent = `Монеты в работе — проходят скринер сегодня (${J.coins.length}). Нажмите на монету, график откроется ниже`;
+  $("coins").innerHTML = J.coins.length ? J.coins.map((c, i) => `<button type="button" class="card" aria-pressed="false" data-c="${i}"><b>${c.sym}${c.top5 ? ' <small class="mut">топ-5</small>' : ""}</b><span class="st${c.w && c.w.stage > 1 ? " on" : ""}">${STAGE[c.w ? c.w.stage : 0]}</span>${spark(c)}</button>`).join("") : '<span class="mut">—</span>';
+}
+const STAGE = ["нет импульса за 24 ч", "импульс, флаг формируется", "импульс + 2 точки линии", "3 точки — ждём пробоя"];
+function spark(c) {
+  const v = (c.c || []).slice(-144).map(x => x[4]); if (v.length < 2) return "";
+  const lo = Math.min(...v), hi = Math.max(...v), y = x => (32 - (x - lo) / (hi - lo || 1) * 30).toFixed(1);
+  const pts = v.map((x, i) => `${(i / (v.length - 1) * 100).toFixed(1)},${y(x)}`).join(" ");
+  return `<svg viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${v[v.length - 1] >= v[0] ? "var(--up)" : "var(--down)"}" stroke-width="1.4" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function showCoin(i, scroll = false) {
+  fresh();
+  const cn = J.coins[i]; if (!cn || !cn.c) return;
+  cur = -1; document.querySelectorAll(".row[aria-selected=true]").forEach(x => x.setAttribute("aria-selected", "false"));
+  document.querySelectorAll(".card").forEach(x => x.setAttribute("aria-pressed", String(+x.dataset.c === i)));
+  const last = cn.c[cn.c.length - 1], p = dec(last[4]) + 1;
+  candles.applyOptions({priceFormat: {type: "price", precision: Math.min(8, p), minMove: Math.pow(10, -Math.min(8, p))}});
+  candles.setData(cn.c.map(([t, o, h, l, c]) => ({time: t + MSK, open: o, high: h, low: l, close: c})));
+  const w = cn.w, mk = [];
+  if (w) {
+    const L = w.side === "long", seg = (pts, color, style = 0, wd = 2) => { const s = chart.addLineSeries({color, lineWidth: wd, lineStyle: style, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, pointMarkersVisible: false}); s.setData(pts.map(([t, v]) => ({time: t + MSK, value: v}))); extras.push(s); };
+    seg([[w.a, w.A], [w.b, w.B]], css("--imp"));
+    if (w.stage > 1) seg([[w.b, w.B], [last[0], w.line_now]], css("--flag"));
+    seg([[w.b, w.Lc], [last[0], w.Lc]], css("--flag"), 2, 1);
+    w.pts.forEach((t, k) => mk.push({time: t + MSK, position: L ? "aboveBar" : "belowBar", color: css("--flag"), shape: L ? "arrowDown" : "arrowUp", text: `точка ${k + 1}`}));
+  }
+  candles.setMarkers(mk);
+  chart.timeScale().fitContent(); requestAnimationFrame(() => { chart.timeScale().fitContent(); diag(cn.sym); });
+  dLoad("c_" + cn.sym, cn.c);
+  $("ttl").innerHTML = `${cn.sym} · монета в работе`;
+  const f = [["Скринер", (cn.why === "hour" ? "добавлена в " + dt(cn.since).slice(6) : "список дня") + (cn.top5 ? " · топ-5" : "")],
+    ["Последняя цена", px(last[4])], ["Что сейчас", STAGE[w ? w.stage : 0]]];
+  if (w) f.push(["Сторона", w.side === "long" ? "лонг" : "шорт"], ["Импульс", `${dt(w.a)} → ${dt(w.b)}`],
+    ["Линия сейчас", w.stage > 1 ? px(w.line_now) : "—"], ["До линии", w.stage > 1 ? w.dist_pct.toFixed(2).replace(".", ",") + "%" : "—"]);
+  $("facts").innerHTML = f.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
+  if (scroll) $("chart").scrollIntoView({block: "nearest", behavior: "smooth"});
+}
+
+$("coins").addEventListener("click", e => { const b = e.target.closest(".card"); if (b) showCoin(+b.dataset.c, true); });
+$("flt").addEventListener("change", render); $("side").addEventListener("change", render);
+$("list").addEventListener("click", e => { const r = e.target.closest(".row"); if (r) select(+r.dataset.i, false); });
+$("list").addEventListener("keydown", e => { if (e.key === "Enter") { const r = e.target.closest(".row"); if (r) select(+r.dataset.i, false); } });
+$("prev").addEventListener("click", () => select(cur - 1)); $("next").addEventListener("click", () => select(cur + 1));
+document.addEventListener("keydown", e => { if (e.target.tagName === "SELECT") return; if (e.key === "ArrowLeft") select(cur - 1); if (e.key === "ArrowRight") select(cur + 1); });
+
+theme();
+fetch("https://raw.githubusercontent.com/dol19sit87-cell/kflag-live/data/journal.json?t=" + Date.now(), {cache: "no-store"}).then(r => r.json()).then(async j => {
+  J = j; rows = j.setups; head(); summary();
+  try { H = await (await fetch("data/history.json")).json(); hrows = H.setups; } catch (e) { hrows = []; }
+  if (!rows.some(r => !r.bf) && hrows.length) $("flt").value = "hist";
+  render();
+}).catch(() => { $("strip").textContent = "Не удалось загрузить журнал — обновите страницу."; });
+// auto-refresh (Rodion 2026-10-02 «раз в 5 минут обновлять автоматически»): build_data.py runs after every scanner pass
+// (autobuild.sh); the page re-reads the data every minute and keeps the open chart, its zoom and the drawing tool.
+async function refresh() {
+  if (!J || tool || pend) return;
+  let j; try { j = await (await fetch("https://raw.githubusercontent.com/dol19sit87-cell/kflag-live/data/journal.json?t=" + Date.now(), {cache: "no-store"})).json(); } catch (e) { return; }
+  if (!j || j.built === J.built) return;
+  let tr = null; try { const d = candles.data(), v = chart.timeScale().getVisibleRange(); if (v && d.length && v.to < d[d.length - 1].time) tr = v; } catch (e) {}
+  const cb = document.querySelector(".card[aria-pressed=true]"), coinSym = cb && J.coins[+cb.dataset.c] ? J.coins[+cb.dataset.c].sym : null;
+  const selId = !coinSym && cur >= 0 && view[cur] ? view[cur].id : null;
+  J = j; rows = j.setups; head(); summary(); await render();
+  if (coinSym) { const k = J.coins.findIndex(c => c.sym === coinSym); if (k >= 0) showCoin(k); }
+  else if (selId != null) { const k = view.findIndex(r => r.id === selId); if (k >= 0) select(k, false); }
+  if (tr) requestAnimationFrame(() => requestAnimationFrame(() => { try { chart.timeScale().setVisibleRange(tr); } catch (e) {} }));
+}
+setInterval(refresh, 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+})();
+</script>
