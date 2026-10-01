@@ -122,7 +122,7 @@ a{color:var(--imp)}
 </div>
 <div class="cwrap"><div id="chart"></div><svg id="ov" aria-hidden="true"></svg>
 <div class="tin" id="tin"><input id="tinput" type="text" maxlength="80" placeholder="Текст на графике"><button type="button" id="tok">OK</button></div></div>
-<p class="dhint" id="dhint">Выберите инструмент и нажмите на график. Линия и зона — два нажатия. Разметка сохраняется для каждого графика, Claude её читает.</p>
+<p class="dhint" id="dhint">Выберите инструмент и нажмите на график. Линия и зона — два нажатия. Разметка сохраняется для каждого графика на этом устройстве.</p>
 </div>
 <div class="bar"><div class="nav"><button id="prev" type="button">← Пред.</button><button id="next" type="button">След. →</button></div><span class="title" id="ttl"></span></div>
 <div class="facts" id="facts"></div>
@@ -250,7 +250,7 @@ function commit(d) { dHist.push(dItems.slice()); dItems = dItems.concat([{...d, 
 function setTool(t) { tool = tool === t ? null : t; pend = null; hover = null; hideTin();
   document.querySelectorAll("#tools [data-tool]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tool === tool)));
   ov.classList.toggle("on", !!tool && !!dKey); paint();
-  $("dhint").textContent = !tool ? "Выберите инструмент и нажмите на график. Линия и зона — два нажатия. Разметка сохраняется для каждого графика, Claude её читает."
+  $("dhint").textContent = !tool ? "Выберите инструмент и нажмите на график. Линия и зона — два нажатия. Разметка сохраняется для каждого графика на этом устройстве."
     : {line: "Линия: нажмите на первую точку, потом на вторую.", box: "Зона: нажмите на один угол, потом на противоположный.", hline: "Уровень: нажмите на нужную цену.",
        up: "Нажмите, где вход в лонг.", down: "Нажмите, где вход в шорт.", text: "Нажмите, где поставить текст.", erase: "Нажмите на то, что стереть."}[tool]; }
 function hideTin() { $("tin").style.display = "none"; }
