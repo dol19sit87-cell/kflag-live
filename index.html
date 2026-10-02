@@ -157,6 +157,19 @@ function vstate(v) {
   return ["вход вне стоп–тейк", "mut"];
 }
 const short = v => { const [t, c] = vstate(v); return [t.startsWith("отменён") ? "отменён" : t, c]; };
+// H22 PAPER (лента BTC): вариант «с доливкой» — одна равная доля на возврате к входу после +1R, после +2R стоп на входе, выход на тейке
+function astate(a) {
+  if (!a || !a.status) return ["—", "mut"];
+  if (a.status === "open") return [`в сделке ${fR(a.r_now || 0)}`, (a.r_now || 0) >= 0 ? "pos" : "neg"];
+  const w = a.why === "tp" ? "тейк" : a.why === "cap" ? "4 суток" : (a.be_t && a.exit_t > a.be_t) ? "стоп на входе" : "стоп";
+  return [`${w} ${fR(a.r_add)}`, a.r_add > 0 ? "pos" : "neg"];
+}
+function aadd(a) {
+  if (!a) return "—";
+  if (a.add_t) return `${dt(a.add_t)} · ${px(a.add_px)}`;
+  if (a.status === "closed") return "долива не было";
+  return a.armed ? "+1R есть, ждёт возврата к входу" : "ждёт +1R";
+}
 
 // The chart is rebuilt from scratch for every setup / coin shown (fresh(), called by draw() and showCoin()): on his
 // phone a reused chart sometimes kept 200 candles but an empty time scale (blank pane, visible range null).
@@ -311,6 +324,7 @@ function draw(r, fit = true) {
     if (v.entry_t) mk.push({time: v.entry_t + MSK, position: L ? "belowBar" : "aboveBar", color: css(col), shape: L ? "arrowUp" : "arrowDown", text: "вход"});
     if (v.exit_t) mk.push({time: v.exit_t + MSK, position: (L === (v.r > 0)) ? "aboveBar" : "belowBar", color: v.r > 0 ? css("--win") : css("--loss"), shape: "circle", text: `${v.why === "tp" ? "тейк" : "стоп"} ${fR(v.r)}`});
   });
+  if (r.addA && r.addA.add_t) mk.push({time: r.addA.add_t + MSK, position: L ? "belowBar" : "aboveBar", color: css("--entry"), shape: L ? "arrowUp" : "arrowDown", text: "долив"});
   candles.setMarkers(mk.sort((p, q) => p.time - q.time));
   if (fit) { chart.timeScale().fitContent(); requestAnimationFrame(() => chart.timeScale().fitContent()); }
   if (fit || dKey !== "s_" + r.id) dLoad("s_" + r.id, r.c); else repaint();
@@ -321,6 +335,7 @@ function facts(r) {
   $("ttl").innerHTML = `${r.sym} · ${L ? "лонг" : "шорт"}${r.h ? ' <span class="mut">· история, до запуска журнала</span>' : r.bf ? ' <span class="mut">· до запуска журнала</span>' : ""}`;
   const f = [["Импульс", `${dt(r.a)} → ${dt(r.b)}`], ["Линия: точки 1–3", r.pts.map(dt).map(x => x.slice(6)).join(" · ")],
     ["Пробой подтверждён", dt(r.tc)], ["Вход · ретест линии", `${px(r.E1)}`], ["Итог", `<span class="${c1}">${s1}</span>`],
+    ...(r.addA ? [["С доливкой", `<span class="${astate(r.addA)[1]}">${astate(r.addA)[0]}</span>`], ["Долив", aadd(r.addA)]] : []),
     ["Стоп", px(r.SL)], ["Тейк", px(r.TP)], ["До тейка, стопов", (r.rr1 ?? 0).toFixed(1).replace(".", ",")],
     ["Риск", (Math.abs(r.E1 - r.SL) / r.E1 * 100).toFixed(2).replace(".", ",") + "% цены"],
     ...(r.btc24 != null ? [["BTC за сутки", (r.btc24 > 0 ? "+" : r.btc24 < 0 ? "−" : "") + Math.abs(r.btc24).toFixed(2).replace(".", ",") + "%"]] : []),
@@ -346,7 +361,15 @@ function summary() {
     const op = v.filter(x => x.status === "open").length, pe = v.filter(x => x.status === "pending").length, ca = v.filter(x => x.status === "cancelled" || x.status === "invalid").length;
     return `<section class="panel"><h2>${name}</h2><p>закрыто ${cl.length} · в плюсе ${w} · <span class="${s > 0 ? "pos" : s < 0 ? "neg" : ""}">${cl.length ? fR(s) : "0R"}</span></p><p class="mut">в сделке ${op} · ждут ${pe} · отменено ${ca}</p></section>`;
   };
-  $("sum").innerHTML = `<section class="panel"><h2>${btc ? "Лента BTC: сетапы после запуска" : "Сетапы после запуска"}</h2><p>${live.length}</p><p class="mut">проверка на истории дня: ${all.length - live.length}</p></section>` + block("v1", "Сделки — вход на ретесте линии");
+  $("sum").innerHTML = `<section class="panel"><h2>${btc ? "Лента BTC: сетапы после запуска" : "Сетапы после запуска"}</h2><p>${live.length}</p><p class="mut">проверка на истории дня: ${all.length - live.length}</p></section>` + block("v1", "Сделки — вход на ретесте линии") + (btc ? addBlock(live) : "");
+}
+function addBlock(live) {
+  const cb = live.filter(r => r.v1.status === "closed"), ca = live.filter(r => r.addA && r.addA.status === "closed"), both = cb.filter(r => r.addA && r.addA.status === "closed");
+  const sum = (v, f) => v.reduce((a, x) => a + f(x), 0), sb = sum(cb, x => x.v1.r), sa = sum(ca, x => x.addA.r_add), nAdd = live.filter(r => r.addA && r.addA.add_t).length;
+  const cls = v => v > 0 ? "pos" : v < 0 ? "neg" : "";
+  return `<section class="panel"><h2>Лента BTC: без доливки и с доливкой</h2><p>без доливки: закрыто ${cb.length} · <span class="${cls(sb)}">${cb.length ? fR(sb) : "0R"}</span></p>` +
+    `<p>с доливкой: закрыто ${ca.length} · <span class="${cls(sa)}">${ca.length ? fR(sa) : "0R"}</span></p>` +
+    `<p class="mut">доливов ${nAdd}` + (both.length !== cb.length || both.length !== ca.length ? ` · в обеих закрыто ${both.length}: без ${fR(sum(both, x => x.v1.r))}, с ${fR(sum(both, x => x.addA.r_add))}` : "") + `</p></section>`;
 }
 
 async function render() {
@@ -359,7 +382,7 @@ async function render() {
   view = src.filter(r => (f !== "live" || !r.bf) && (side === "all" || r.s === side));
   $("count").textContent = `${view.length} сетапов` + (f === "hist" ? " · " + histLine(view) : "");
   $("list").innerHTML = view.length ? view.map((r, i) => { const [a, ca] = short(r.v1);
-    return `<div class="row" role="option" tabindex="0" aria-selected="false" data-i="${i}"><span class="d">${dt(r.tc)}</span><span>${r.sym}${r.bf ? ' <span class="bf">история</span>' : ""}</span><span>${r.s === "L" ? "лонг" : "шорт"}</span><span class="${ca}">${a}</span></div>`; }).join("")
+    return `<div class="row" role="option" tabindex="0" aria-selected="false" data-i="${i}"><span class="d">${dt(r.tc)}</span><span>${r.sym}${r.bf ? ' <span class="bf">история</span>' : ""}</span><span>${r.s === "L" ? "лонг" : "шорт"}</span><span class="${ca}">${a}${r.addA ? `<small class="${astate(r.addA)[1]}" style="display:block;font:11.5px var(--sans)">с доливкой: ${astate(r.addA)[0]}</small>` : ""}</span></div>`; }).join("")
     : f === "btc" ? `<div class="empty">${src.length ? "С такими фильтрами сетапов нет." : "Сетапов в ленте BTC пока нет."}</div>`
     : `<div class="empty">${rows.length ? "С такими фильтрами сетапов нет." : "Сетапов пока нет."} По истории правило находит сетап примерно раз в несколько дней на весь список монет; журнал пополняется сам. Примеры — в режиме «История 12 месяцев».</div>`;
   if (view.length) select(0); else if (J.coins.some(c => c.c)) { const i = J.coins.reduce((bi, c, k) => ((c.w ? c.w.stage : 0) > (J.coins[bi].w ? J.coins[bi].w.stage : 0) ? k : bi), 0); showCoin(i); } else { $("ttl").textContent = ""; $("facts").innerHTML = ""; fresh(); dKey = null; paint(); }
