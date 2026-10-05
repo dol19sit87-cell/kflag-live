@@ -100,7 +100,7 @@ a{color:var(--imp)}
 </div>
 
 <div class="controls">
-<select id="flt" aria-label="Какие сетапы"><option value="live">После запуска журнала</option><option value="all">Все, включая проверку на сегодняшней истории</option><option value="hist">История 12 месяцев — для насмотренности</option><option value="btc">Лента BTC (проверка): по биткоину, без 1:2</option><option value="m4h">Лента MACD BTC 4ч (проверка): без 1:2</option></select>
+<select id="flt" aria-label="Какие сетапы"><option value="live">После запуска журнала</option><option value="all">Все, включая проверку на сегодняшней истории</option><option value="hist">История 12 месяцев — для насмотренности</option><option value="btc">Лента BTC (проверка): по биткоину, без 1:2</option><option value="m4h">Лента MACD BTC 4ч (проверка): без 1:2</option><option value="m4h2">Лента MACD BTC 4ч, тейк 2R (проверка)</option></select>
 <select id="side" aria-label="Направление"><option value="all">Лонг и шорт</option><option value="L">Только лонг</option><option value="S">Только шорт</option></select>
 <span class="count" id="count"></span>
 </div>
@@ -356,14 +356,14 @@ function select(i, scroll = true) {
 }
 
 function summary() {
-  const fv = $("flt").value, btc = fv === "btc" || fv === "m4h", all = fv === "btc" ? (J.setups_btc || []) : fv === "m4h" ? (J.setups_m4h || []) : rows, live = all.filter(r => !r.bf);
-  const laneName = fv === "m4h" ? "Лента MACD BTC 4ч" : "Лента BTC";
+  const fv = $("flt").value, btc = fv === "btc" || fv === "m4h" || fv === "m4h2", all = fv === "btc" ? (J.setups_btc || []) : fv === "m4h" ? (J.setups_m4h || []) : fv === "m4h2" ? (J.setups_m4h2 || []) : rows, live = all.filter(r => !r.bf);
+  const laneName = fv === "m4h" ? "Лента MACD BTC 4ч" : fv === "m4h2" ? "Лента MACD BTC 4ч, тейк 2R" : "Лента BTC";
   const block = (k, name) => {
     const v = live.map(r => r[k]), cl = v.filter(x => x.status === "closed"), w = cl.filter(x => x.r > 0).length, s = cl.reduce((a, x) => a + x.r, 0);
     const op = v.filter(x => x.status === "open").length, pe = v.filter(x => x.status === "pending").length, ca = v.filter(x => x.status === "cancelled" || x.status === "invalid").length;
     return `<section class="panel"><h2>${name}</h2><p>закрыто ${cl.length} · в плюсе ${w} · <span class="${s > 0 ? "pos" : s < 0 ? "neg" : ""}">${cl.length ? fR(s) : "0R"}</span></p><p class="mut">в сделке ${op} · ждут ${pe} · отменено ${ca}</p></section>`;
   };
-  $("sum").innerHTML = `<section class="panel"><h2>${btc ? laneName + ": сетапы после запуска" : "Сетапы после запуска"}</h2><p>${live.length}</p><p class="mut">проверка на истории дня: ${all.length - live.length}</p></section>` + block("v1", "Сделки — вход на ретесте линии") + (btc ? addBlock(live, laneName) : "");
+  $("sum").innerHTML = `<section class="panel"><h2>${btc ? laneName + ": сетапы после запуска" : "Сетапы после запуска"}</h2><p>${live.length}</p><p class="mut">проверка на истории дня: ${all.length - live.length}</p></section>` + block("v1", "Сделки — вход на ретесте линии") + (btc && fv !== "m4h2" ? addBlock(live, laneName) : "");
 }
 function addBlock(live, laneName) {
   const cb = live.filter(r => r.v1.status === "closed"), ca = live.filter(r => r.addA && r.addA.status === "closed"), both = cb.filter(r => r.addA && r.addA.status === "closed");
@@ -380,12 +380,12 @@ async function render() {
     $("count").textContent = "Загрузка истории…";
     try { H = await (await fetch("data/history.json")).json(); hrows = H.setups; } catch (e) { hrows = []; }
   }
-  const src = f === "hist" ? hrows : f === "btc" ? (J.setups_btc || []) : f === "m4h" ? (J.setups_m4h || []) : rows;
+  const src = f === "hist" ? hrows : f === "btc" ? (J.setups_btc || []) : f === "m4h" ? (J.setups_m4h || []) : f === "m4h2" ? (J.setups_m4h2 || []) : rows;
   view = src.filter(r => (f !== "live" || !r.bf) && (side === "all" || r.s === side));
   $("count").textContent = `${view.length} сетапов` + (f === "hist" ? " · " + histLine(view) : "");
   $("list").innerHTML = view.length ? view.map((r, i) => { const [a, ca] = short(r.v1);
     return `<div class="row" role="option" tabindex="0" aria-selected="false" data-i="${i}"><span class="d">${dt(r.tc)}</span><span>${r.sym}${r.bf ? ' <span class="bf">история</span>' : ""}</span><span>${r.s === "L" ? "лонг" : "шорт"}</span><span class="${ca}">${a}${r.addA ? `<small class="${astate(r.addA)[1]}" style="display:block;font:11.5px var(--sans)">с доливкой: ${astate(r.addA)[0]}</small>` : ""}</span></div>`; }).join("")
-    : f === "btc" || f === "m4h" ? `<div class="empty">${src.length ? "С такими фильтрами сетапов нет." : f === "m4h" ? "Сетапов в ленте MACD BTC 4ч пока нет." : "Сетапов в ленте BTC пока нет."}</div>`
+    : f === "btc" || f === "m4h" || f === "m4h2" ? `<div class="empty">${src.length ? "С такими фильтрами сетапов нет." : f === "m4h" || f === "m4h2" ? "Сетапов в ленте MACD BTC 4ч пока нет." : "Сетапов в ленте BTC пока нет."}</div>`
     : `<div class="empty">${rows.length ? "С такими фильтрами сетапов нет." : "Сетапов пока нет."} По истории правило находит сетап примерно раз в несколько дней на весь список монет; журнал пополняется сам. Примеры — в режиме «История 12 месяцев».</div>`;
   if (view.length) select(0); else if (J.coins.some(c => c.c)) { const i = J.coins.reduce((bi, c, k) => ((c.w ? c.w.stage : 0) > (J.coins[bi].w ? J.coins[bi].w.stage : 0) ? k : bi), 0); showCoin(i); } else { $("ttl").textContent = ""; $("facts").innerHTML = ""; fresh(); dKey = null; paint(); }
 }
