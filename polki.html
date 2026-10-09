@@ -84,7 +84,7 @@ function pick(k,noscroll){
   const last=b.length?b[b.length-1].time-Z:0, mk=[];
   for(const x of all.filter(x=>x.sym===sym)){const main=key(x)===k;const t0=Math.max(x.touches[0],b.length?b[0].time-Z:0);const t1=x.broken||last;
     if(t1<=t0)continue;const ls=chart.addLineSeries({color:x.side==="хаи"?"#c0392b":"#2e7d4f",lineWidth:main?3:1,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false});
-    ls.setData([{time:t0+Z,value:x.line},{time:t1+Z,value:x.line}]);lines.push(ls);
+    const pts=b.filter(r=>r.time-Z>=t0&&r.time-Z<=t1).map(r=>({time:r.time,value:x.line}));if(!pts.length||pts[0].time!==t0+Z)pts.unshift({time:t0+Z,value:x.line});ls.setData(pts);lines.push(ls);  // a point per candle so the price scale always fits the line
     if(main)x.touches.forEach((t,i)=>mk.push({time:t+Z,position:x.side==="хаи"?"aboveBar":"belowBar",color:"#b7791f",shape:"circle",text:"к"+(i+1)}));}
   series.setMarkers(mk.sort((a,b)=>a.time-b.time));
   chart.timeScale().setVisibleRange({from:Math.max(b.length?b[0].time:0,s.touches[0]-48*3600+Z),to:last+6*3600+Z});
