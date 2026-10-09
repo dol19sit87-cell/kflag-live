@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Сканер полок</title>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--ink:#1d2433;--mut:#6b7385;--line:#e3e7ee;--red:#c0392b;--green:#2e7d4f;--acc:#2c4a7c;--warn:#b7791f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151b;--card:#1b2029;--ink:#e6e9ef;--mut:#99a1b3;--line:#2b3240;--red:#e0675a;--green:#4fb07a;--acc:#7aa2e3;--warn:#e0a84a}}
+:root[data-theme="dark"]{--bg:#12151b;--card:#1b2029;--ink:#e6e9ef;--mut:#99a1b3;--line:#2b3240;--red:#e0675a;--green:#4fb07a;--acc:#7aa2e3;--warn:#e0a84a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 6px}h2{font-size:17px;margin:22px 0 8px}
+.sub{color:var(--mut);font-size:13.5px;max-width:760px}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12.5px;font-weight:600}
+.ok{background:#e3f4ea;color:#21613d}.bad{background:#fbe5e2;color:#9b2c20}
+@media (prefers-color-scheme:dark){.ok{background:#1f3a2a;color:#8fd6aa}.bad{background:#41211d;color:#f0a197}}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+.bar button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:6px 12px;font-size:13.5px;cursor:pointer}
+.bar button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:7px 10px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{font-size:12px;color:var(--mut);font-weight:600}
+tr.r{cursor:pointer}tr.r:hover td{background:rgba(44,74,124,.06)}tr.sel td{background:rgba(44,74,124,.13)}
+.hi{color:var(--red);font-weight:600}.lo{color:var(--green);font-weight:600}
+.near{color:var(--warn);font-weight:700}.dim{color:var(--mut)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+#chartBox{margin-top:10px}#chartHead{padding:10px 12px;font-size:14px;border-bottom:1px solid var(--line)}
+#chart{height:420px}
+.empty{padding:14px;color:var(--mut)}
+</style></head><body><div class="wrap">
+<h1>Сканер полок</h1>
+<div class="sub">Сделок нет, только поиск. Раз в час робот берёт монеты с оборотом от $100M за сутки и ищет на часовике полки по утверждённым правилам. Непробитые полки копятся и остаются в списке, даже если оборот монеты упал. Полка снесена, когда часовая свеча закрылась за ней. Красные — полки хаёв (над ценой), зелёные — полки лоёв (под ценой). «До цены» — сколько процентов от текущей цены до полки. Время московское.</div>
+<div class="bar" id="status"></div>
+<div class="bar" id="filters">
+ <button data-f="all" class="on">Все</button><button data-f="near">Близко, до 3 %</button><button data-f="liq">Только с оборотом от $100M сейчас</button>
+</div>
+<div class="card" id="chartBox" hidden><div id="chartHead"></div><div id="chart"></div></div>
+<h2>Свежие полки <span class="dim" style="font-weight:400;font-size:13px">готовы меньше 2 суток назад</span></h2>
+<div class="card tw" id="fresh"></div>
+<h2>Отлежавшиеся полки <span class="dim" style="font-weight:400;font-size:13px">готовы 2 суток назад и раньше, до сих пор не снесены</span></h2>
+<div class="card tw" id="old"></div>
+<h2>Снесённые за последние 2 суток</h2>
+<div class="card tw" id="broken"></div>
+</div>
+<script>
+const SRC="https://raw.githubusercontent.com/dol19sit87-cell/kflag-live/data/shelves.json";
+const Z=3*3600; // chart times shifted to Moscow time
+let J=null,F="all",SEL=null,chart=null,series=null,lines=[];
+const msk=t=>{const d=new Date((t+3*3600)*1000);const p=n=>String(n).padStart(2,"0");return `${p(d.getUTCDate())}.${p(d.getUTCMonth()+1)} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`};
+const age=s=>{const h=Math.floor(s/3600);return h<48?`${h} ч`:`${Math.floor(h/24)} дн ${h%24} ч`};
+const px=v=>{const a=Math.abs(v);const d=a>=1000?1:a>=100?2:a>=1?4:a>=0.01?5:7;return (+v.toFixed(d)).toString().replace(".",",")};
+const key=s=>s.sym+"|"+s.side+"|"+s.line;
+function pass(s){const c=J.coins[s.sym]||{};if(F==="near")return Math.abs(s.dist)<=3;if(F==="liq")return c.liquid;return true}
+function table(list,broken){
+  if(!list.length)return `<div class="empty">Пока пусто.</div>`;
+  const now=J.built;
+  let h=`<table><tr><th>Монета</th><th>Полка</th><th class="num">Цена полки</th><th class="num">${broken?"Снесена":"До цены"}</th><th class="num">Касаний</th><th>Готова</th><th class="num">Оборот, $M</th></tr>`;
+  for(const s of list){const c=J.coins[s.sym]||{};const k=key(s);
+    const d=broken?msk(s.broken):`<span class="${Math.abs(s.dist)<=1?"near":""}">${s.dist>0?"+":""}${s.dist.toFixed(2).replace(".",",")} %</span>`;
+    h+=`<tr class="r${SEL===k?" sel":""}" data-k="${k}"><td><b>${s.sym}</b></td><td class="${s.side==="хаи"?"hi":"lo"}">${s.side}</td><td class="num">${px(s.line)}</td><td class="num">${d}</td><td class="num">${s.touches.length}</td><td>${msk(s.ready)} <span class="dim">(${age(now-s.ready)})</span></td><td class="num ${c.liquid?"":"dim"}">${c.vol?Math.round(c.vol/1e6):"—"}</td></tr>`}
+  return h+"</table>";
+}
+function render(){
+  const now=J.built, A=J.shelves.filter(pass).sort((a,b)=>Math.abs(a.dist)-Math.abs(b.dist));
+  document.getElementById("fresh").innerHTML=table(A.filter(s=>now-s.ready<172800));
+  document.getElementById("old").innerHTML=table(A.filter(s=>now-s.ready>=172800));
+  document.getElementById("broken").innerHTML=table(J.broken.filter(s=>F!=="near"&&(F!=="liq"||(J.coins[s.sym]||{}).liquid)).sort((a,b)=>b.broken-a.broken),true);
+  document.querySelectorAll("tr.r").forEach(tr=>tr.onclick=()=>pick(tr.dataset.k));
+}
+function pick(k,noscroll){
+  SEL=k;render();const [sym,side,line]=k.split("|");const all=J.shelves.concat(J.broken);
+  const s=all.find(x=>key(x)===k);if(!s){SEL=null;render();return}const box=document.getElementById("chartBox");box.hidden=false;
+  document.getElementById("chartHead").innerHTML=`<b>${sym}</b> · полка ${s.side} ${px(s.line)} · касаний ${s.touches.length}: ${s.touches.map(msk).join(", ")}${s.broken?` · снесена ${msk(s.broken)}`:""}. Толстая линия — эта полка, тонкие — остальные полки монеты.`;
+  const el=document.getElementById("chart");
+  if(!chart){const cs=getComputedStyle(document.documentElement);
+    chart=LightweightCharts.createChart(el,{autoSize:true,layout:{background:{color:"transparent"},textColor:cs.getPropertyValue("--mut")},
+      grid:{vertLines:{color:cs.getPropertyValue("--line")},horzLines:{color:cs.getPropertyValue("--line")}},
+      timeScale:{timeVisible:true,secondsVisible:false},localization:{locale:"ru-RU"},rightPriceScale:{borderVisible:false}});
+    series=chart.addCandlestickSeries({upColor:"#26a69a",downColor:"#ef5350",wickUpColor:"#26a69a",wickDownColor:"#ef5350",borderVisible:false});}
+  lines.forEach(l=>chart.removeSeries(l));lines=[];
+  const b=(J.bars[sym]||[]).map(r=>({time:r[0]+Z,open:r[1],high:r[2],low:r[3],close:r[4]}));series.setData(b);
+  const last=b.length?b[b.length-1].time-Z:0, mk=[];
+  for(const x of all.filter(x=>x.sym===sym)){const main=key(x)===k;const t0=Math.max(x.touches[0],b.length?b[0].time-Z:0);const t1=x.broken||last;
+    if(t1<=t0)continue;const ls=chart.addLineSeries({color:x.side==="хаи"?"#c0392b":"#2e7d4f",lineWidth:main?3:1,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false});
+    ls.setData([{time:t0+Z,value:x.line},{time:t1+Z,value:x.line}]);lines.push(ls);
+    if(main)x.touches.forEach((t,i)=>mk.push({time:t+Z,position:x.side==="хаи"?"aboveBar":"belowBar",color:"#b7791f",shape:"circle",text:"к"+(i+1)}));}
+  series.setMarkers(mk.sort((a,b)=>a.time-b.time));
+  chart.timeScale().setVisibleRange({from:Math.max(b.length?b[0].time:0,s.touches[0]-48*3600+Z),to:last+6*3600+Z});
+  if(!noscroll)box.scrollIntoView({behavior:"smooth",block:"start"});
+}
+document.querySelectorAll("#filters button").forEach(b=>b.onclick=()=>{F=b.dataset.f;document.querySelectorAll("#filters button").forEach(x=>x.classList.toggle("on",x===b));render()});
+async function load(){
+  try{J=await (await fetch(SRC+"?t="+Date.now(),{cache:"no-store"})).json()}catch(e){document.getElementById("status").innerHTML=`<span class="pill bad">нет данных сканера</span>`;return}
+  const agoMin=Math.round((Date.now()/1000-J.built)/60), ok=agoMin<90;
+  const liq=Object.values(J.coins).filter(c=>c.liquid).length;
+  document.getElementById("status").innerHTML=`<span class="pill ${ok?"ok":"bad"}">${ok?"сканер работает":"данные устарели — сканер на Маке не отвечает"}</span><span class="dim">обновлено ${msk(J.built)} · монет в списке ${J.ncoins}, из них с оборотом от $100M сейчас ${liq} · полок ${J.shelves.length}</span>`;
+  render(); if(SEL)pick(SEL,true);
+}
+load(); setInterval(load,5*60*1000);
+</script></body></html>
