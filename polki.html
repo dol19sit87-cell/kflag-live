@@ -77,7 +77,7 @@ function pick(k,noscroll){
   if(!chart){const cs=getComputedStyle(document.documentElement);
     chart=LightweightCharts.createChart(el,{autoSize:true,layout:{background:{color:"transparent"},textColor:cs.getPropertyValue("--mut")},
       grid:{vertLines:{color:cs.getPropertyValue("--line")},horzLines:{color:cs.getPropertyValue("--line")}},
-      timeScale:{timeVisible:true,secondsVisible:false},localization:{locale:"ru-RU"},rightPriceScale:{borderVisible:false}});
+      timeScale:{timeVisible:true,secondsVisible:false},localization:{locale:"ru-RU"},crosshair:{mode:0},rightPriceScale:{borderVisible:false}});
     series=chart.addCandlestickSeries({upColor:"#26a69a",downColor:"#ef5350",wickUpColor:"#26a69a",wickDownColor:"#ef5350",borderVisible:false});}
   lines.forEach(l=>chart.removeSeries(l));lines=[];
   const b=(J.bars[sym]||[]).map(r=>({time:r[0]+Z,open:r[1],high:r[2],low:r[3],close:r[4]}));series.setData(b);
