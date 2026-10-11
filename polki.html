@@ -80,7 +80,7 @@ function pick(k,noscroll){
       timeScale:{timeVisible:true,secondsVisible:false},localization:{locale:"ru-RU"},crosshair:{mode:0},rightPriceScale:{borderVisible:false}});
     series=chart.addCandlestickSeries({upColor:"#26a69a",downColor:"#ef5350",wickUpColor:"#26a69a",wickDownColor:"#ef5350",borderVisible:false});}
   lines.forEach(l=>chart.removeSeries(l));lines=[];
-  const b=(J.bars[sym]||[]).map(r=>({time:r[0]+Z,open:r[1],high:r[2],low:r[3],close:r[4]}));series.setData(b);
+  const b=(J.bars[sym]||[]).map(r=>({time:r[0]+Z,open:r[1],high:r[2],low:r[3],close:r[4]}));series.setData(b);chart.priceScale("right").applyOptions({autoScale:true});  // reset after manual price-axis drag
   const last=b.length?b[b.length-1].time-Z:0, mk=[];
   for(const x of all.filter(x=>x.sym===sym)){const main=key(x)===k;const t0=Math.max(x.touches[0],b.length?b[0].time-Z:0);const t1=x.broken||last;
     if(t1<=t0)continue;const ls=chart.addLineSeries({color:x.side==="хаи"?"#c0392b":"#2e7d4f",lineWidth:main?3:1,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false});
