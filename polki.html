@@ -183,7 +183,8 @@ function shelvesOn(C,sym,k,all){
       for(let i=0;i<C.T.length;i++){const u=C.T[i];if(u<x.broken-3600||u>=x.broken)continue;if(hi?C.bars[i][2]>lim:C.bars[i][3]<lim){t1=u;break}}}
     t1=Math.min(t1,last);
     if(t1<=t0)continue;
-    const ls=C.main.addLineSeries({color:x.side==="хаи"?"#c0392b":"#2e7d4f",lineWidth:main?3:1,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false});
+    const ls=C.main.addLineSeries({color:x.side==="хаи"?"#c0392b":"#2e7d4f",lineWidth:main?3:1,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false,
+      ...(C.step===300?{autoscaleInfoProvider:()=>null}:{})});   // 5m: the price scale fits the candles only (Rodion 11.10), shelves far away don't squash it
     const pts=C.T.filter(t=>t>=t0&&t<=t1).map(t=>({time:t+Z,value:x.line}));ls.setData(pts);C.lines.push(ls);
     if(main){const pos=x.side==="хаи"?"aboveBar":"belowBar",snap=t=>{let b=null;for(const u of C.T){if(u>t+3599)break;if(u>=t)b=u}return b};
       // on 5m the touch hour is marked on its own extreme 5m candle
