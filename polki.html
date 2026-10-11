@@ -66,10 +66,12 @@ tr.r{cursor:pointer}tr.r:hover td{background:rgba(44,74,124,.06)}tr.sel td{backg
   <button type="button" data-tool="ray" aria-pressed="false">→ Луч</button>
   <button type="button" data-tool="hline" aria-pressed="false">― Уровень</button>
   <button type="button" data-tool="erase" aria-pressed="false">⌫ Ластик</button>
+  <button type="button" id="mag" aria-pressed="false" title="Точки липнут к open/high/low/close свечей, полкам и уровням">🧲 Магнит</button>
+  <button type="button" id="del" disabled>✕ Удалить выбранное</button>
   <span class="sep"></span><span id="sws" style="display:flex;gap:6px"></span><span class="sep"></span>
   <button type="button" id="undo">Отменить</button><button type="button" id="clr">Очистить</button>
   <button type="button" id="fsb">⤢ На весь экран</button>
-  <span class="hint" id="hint">Выберите инструмент и нажмите на любой из двух графиков. Линия и луч — два нажатия.</span>
+  <span class="hint" id="hint">Выберите инструмент и нажмите на любой из двух графиков. Линия и луч — два нажатия, с Shift — строго горизонтально. Без инструмента нажатие на линию выделяет её.</span>
  </div>
  <div class="two">
   <div class="col" id="c1h"></div>
@@ -149,7 +151,11 @@ function buildCol(tf){
   ["pointermove","wheel","pointerup","touchmove"].forEach(e=>$("m_"+tf).addEventListener(e,()=>paint(C),{passive:true}));
   new ResizeObserver(()=>paint(C)).observe($("m_"+tf));
   C.ov.addEventListener("pointerdown",ev=>down(C,ev));
-  C.ov.addEventListener("pointermove",ev=>{if(pend&&pend.C===C){hover=at(C,ev);paint(C)}});
+  C.ov.addEventListener("pointermove",ev=>{if(tool){hover=at(C,ev);hover.C=C;paint(C)}});
+  C.ov.addEventListener("pointerleave",()=>{if(hover&&hover.C===C&&!pend){hover=null;paint(C)}});
+  // without a tool the overlay lets clicks through to the chart; a click near a drawing selects it
+  $("m_"+tf).addEventListener("pointerdown",ev=>{if(tool||!C.key)return;const q=rawAt(C,ev);let bi=-1,bd=8;
+    C.items.forEach((d,i)=>{const v=near(C,d,q);if(v<bd){bd=v;bi=i}});select(bi>=0?{C,i:bi}:null)},true);
   cols[tf]=C;return C;
 }
 function setData(C,bars){
@@ -167,6 +173,7 @@ function setData(C,bars){
     C.charts.forEach(c=>c.priceScale("right").applyOptions({minimumWidth:w}))}));
 }
 function shelvesOn(C,sym,k,all){
+  C.levels=all.filter(x=>x.sym===sym).map(x=>x.line);
   C.lines.forEach(l=>C.main.removeSeries(l));C.lines=[];const mk=[];
   if(!C.T.length){C.candles.setMarkers([]);return}
   const first=C.T[0],last=C.T[C.T.length-1];
@@ -216,40 +223,57 @@ function l2t(C,l){const T=C.T,n=T.length;if(!n||l==null)return null;const i=Math
 function t2l(C,t){const T=C.T,n=T.length;if(!n)return null;if(t<=T[0])return (t-T[0])/C.step;if(t>=T[n-1])return n-1+(t-T[n-1])/C.step;
   let lo=0,hi=n-1;while(hi-lo>1){const m=(lo+hi)>>1;if(T[m]<=t)lo=m;else hi=m}return lo+(t-T[lo])/(T[hi]-T[lo])}
 const X=(C,t)=>C.main.timeScale().logicalToCoordinate(t2l(C,t)), Y=(C,p)=>C.candles.priceToCoordinate(p);
-function at(C,ev){const r=C.ov.getBoundingClientRect(),x=ev.clientX-r.left,y=ev.clientY-r.top;return {x,y,t:l2t(C,C.main.timeScale().coordinateToLogical(x)),p:C.candles.coordinateToPrice(y)}}
+function rawAt(C,ev){const r=C.ov.getBoundingClientRect(),x=ev.clientX-r.left,y=ev.clientY-r.top;return {x,y,t:l2t(C,C.main.timeScale().coordinateToLogical(x)),p:C.candles.coordinateToPrice(y)}}
+let MAG=false,selD=null;
+// magnet: the point sticks to open/high/low/close of the nearest candles, or to a shelf / drawn level, within 18 px; Shift keeps the 2nd point at the 1st point's price
+function at(C,ev){const q=rawAt(C,ev);q.snap=false;if(q.t==null||q.p==null)return q;
+  if(MAG){const l=Math.round(C.main.timeScale().coordinateToLogical(q.x)),B=C.bars||[];let best=null,bd=18;
+    for(let i=l-1;i<=l+1;i++){if(i<0||i>=B.length)continue;for(const v of B[i].slice(1,5)){const yy=Y(C,v);if(yy!=null&&Math.abs(yy-q.y)<bd){bd=Math.abs(yy-q.y);best={t:C.T[i],p:v}}}}
+    for(const v of (C.levels||[]).concat(C.items.filter(d=>d.k==="hline").map(d=>d.p))){const yy=Y(C,v);if(yy!=null&&Math.abs(yy-q.y)<bd){bd=Math.abs(yy-q.y);best={t:q.t,p:v}}}
+    if(best){q.t=best.t;q.p=best.p;q.snap=true}}
+  if(ev.shiftKey&&pend&&pend.C===C){q.p=pend.p1;q.snap=true}
+  return q}
 function el(C,name,a,parent){const e=document.createElementNS(NS,name);for(const k in a)e.setAttribute(k,a[k]);(parent||C.ov).appendChild(e);return e}
 function paint(C){
   if(!C||!C.ov)return;C.ov.textContent="";if(!C.key||!C.T.length)return;
   const W=C.ov.clientWidth-C.main.priceScale("right").width(),Hh=C.ov.clientHeight-C.main.timeScale().height();
   const defs=el(C,"defs",{}),cp=el(C,"clipPath",{id:"cp_"+C.tf},defs);el(C,"rect",{x:0,y:0,width:Math.max(0,W),height:Math.max(0,Hh)},cp);
   const g=el(C,"g",{"clip-path":`url(#cp_${C.tf})`});
-  const items=pend&&pend.C===C?C.items.concat([{k:pend.k,t1:pend.t1,p1:pend.p1,t2:hover?hover.t:pend.t1,p2:hover?hover.p:pend.p1,c:pend.c}]):C.items;
-  for(const d of items){const c=d.c||COLORS[0];
-    if(d.k==="line"||d.k==="ray"){let x1=X(C,d.t1),y1=Y(C,d.p1),x2=X(C,d.t2),y2=Y(C,d.p2);if([x1,y1,x2,y2].some(v=>v==null))continue;
+  const hv=hover&&hover.C===C?hover:null;
+  const items=pend&&pend.C===C?C.items.concat([{k:pend.k,t1:pend.t1,p1:pend.p1,t2:hv?hv.t:pend.t1,p2:hv?hv.p:pend.p1,c:pend.c}]):C.items;
+  items.forEach((d,idx)=>{const c=d.c||COLORS[0],sel=selD&&selD.C===C&&selD.i===idx,sw=sel?4:0;
+    if(d.k==="line"||d.k==="ray"){let x1=X(C,d.t1),y1=Y(C,d.p1),x2=X(C,d.t2),y2=Y(C,d.p2);if([x1,y1,x2,y2].some(v=>v==null))return;
       if(d.k==="ray"&&x2!==x1){const k=(y2-y1)/(x2-x1),xe=x2>x1?W+10:-10;y2=y1+k*(xe-x1);x2=xe}
-      el(C,"line",{x1,y1,x2,y2,stroke:c,"stroke-width":2,"stroke-linecap":"round"},g)}
-    else if(d.k==="hline"){const y=Y(C,d.p);if(y==null)continue;el(C,"line",{x1:0,y1:y,x2:W,y2:y,stroke:c,"stroke-width":1.5},g);
-      const tx=el(C,"text",{x:W-6,y:y-4,"text-anchor":"end",fill:c,"font-size":11,stroke:css("--card"),"stroke-width":3,"paint-order":"stroke"},g);tx.textContent=px(d.p)}}
-  if(pend&&pend.C===C&&!hover){const x=X(C,pend.t1),y=Y(C,pend.p1);if(x!=null&&y!=null)el(C,"circle",{cx:x,cy:y,r:4,fill:pend.c},g)}
+      el(C,"line",{x1,y1,x2,y2,stroke:c,"stroke-width":sw||2,"stroke-linecap":"round"},g);
+      if(sel)[[X(C,d.t1),Y(C,d.p1)],[X(C,d.t2),Y(C,d.p2)]].forEach(([a,b])=>el(C,"circle",{cx:a,cy:b,r:5,fill:css("--card"),stroke:c,"stroke-width":2},g))}
+    else if(d.k==="hline"){const y=Y(C,d.p);if(y==null)return;el(C,"line",{x1:0,y1:y,x2:W,y2:y,stroke:c,"stroke-width":sw||1.5},g);
+      const tx=el(C,"text",{x:W-6,y:y-4,"text-anchor":"end",fill:c,"font-size":11,stroke:css("--card"),"stroke-width":3,"paint-order":"stroke"},g);tx.textContent=px(d.p)}});
+  if(pend&&pend.C===C){const x=X(C,pend.t1),y=Y(C,pend.p1);if(x!=null&&y!=null)el(C,"circle",{cx:x,cy:y,r:4,fill:pend.c},g)}
+  if(tool&&tool!=="erase"&&hv){const x=X(C,hv.t),y=Y(C,hv.p);if(x!=null&&y!=null)el(C,"circle",{cx:x,cy:y,r:hv.snap?5:3,fill:hv.snap?color:"none",stroke:color,"stroke-width":1.5},g)}
 }
 const lsGet=k=>{try{return JSON.parse(localStorage.getItem("pd_"+k)||"null")}catch(e){return null}};
 const lsSet=(k,v)=>{try{localStorage.setItem("pd_"+k,JSON.stringify(v))}catch(e){}};
-function dLoad(C,k){C.key=k;C.items=(lsGet(k)||[]);C.hist=[];paint(C)}
+function dLoad(C,k){C.key=k;C.items=(lsGet(k)||[]);C.hist=[];if(selD&&selD.C===C)select(null);paint(C)}
+function select(v){const old=selD;selD=v;$("del").disabled=!selD;if(old)paint(old.C);if(selD)paint(selD.C)}
+function delSel(){if(!selD)return;const C=selD.C;C.hist.push(C.items.slice());C.items=C.items.filter((_,i)=>i!==selD.i);save(C);last=C;select(null);paint(C)}
+$("del").addEventListener("click",delSel);
+MAG=lsGet("mag")===true;$("mag").setAttribute("aria-pressed",String(MAG));
+$("mag").addEventListener("click",()=>{MAG=!MAG;lsSet("mag",MAG);$("mag").setAttribute("aria-pressed",String(MAG))});
 function save(C){lsSet(C.key,C.items)}
 let last=null; // the column drawn on last, for undo / clear
 function commit(C,d){C.hist.push(C.items.slice());C.items=C.items.concat([d]);save(C);last=C;setTool(null)}
-function setTool(t){tool=tool===t?null:t;pend=null;hover=null;
+function setTool(t){tool=tool===t?null:t;pend=null;hover=null;if(tool)select(null);
   document.querySelectorAll("#tools [data-tool]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.tool===tool)));
   Object.values(cols).forEach(C=>{C.ov.classList.toggle("on",!!tool);paint(C)});
   $("hint").textContent=!tool?"Выберите инструмент и нажмите на любой из двух графиков. Линия и луч — два нажатия."
-   :{line:"Линия: первая точка, потом вторая.",ray:"Луч: начало, потом точка направления.",hline:"Уровень: нажмите на цену.",erase:"Нажмите на линию, которую стереть."}[tool]}
+   :{line:"Линия: первая точка, потом вторая. Shift — строго горизонтально.",ray:"Луч: начало, потом точка направления. Shift — строго горизонтально.",hline:"Уровень: нажмите на цену.",erase:"Нажмите на линию, которую стереть."}[tool]}
 function near(C,d,q){
   if(d.k==="hline")return Math.abs(Y(C,d.p)-q.y);
   let x1=X(C,d.t1),y1=Y(C,d.p1),x2=X(C,d.t2),y2=Y(C,d.p2);
   if(d.k==="ray"&&x2!==x1){const k=(y2-y1)/(x2-x1),xe=x2>x1?1e5:-1e5;y2=y1+k*(xe-x1);x2=xe}
   const vx=x2-x1,vy=y2-y1,L=vx*vx+vy*vy||1,u=Math.max(0,Math.min(1,((q.x-x1)*vx+(q.y-y1)*vy)/L));return Math.hypot(x1+u*vx-q.x,y1+u*vy-q.y)}
 function down(C,ev){
-  if(!tool||!C.key)return;ev.preventDefault();const q=at(C,ev);if(q.p==null||q.t==null)return;
+  if(!tool||!C.key)return;ev.preventDefault();const q=at(C,ev);hover=q;hover.C=C;if(q.p==null||q.t==null)return;
   if(tool==="erase"){let bi=-1,bd=14;C.items.forEach((d,i)=>{const v=near(C,d,q);if(v<bd){bd=v;bi=i}});
     if(bi>=0){C.hist.push(C.items.slice());C.items=C.items.filter((_,i)=>i!==bi);save(C);last=C;paint(C)}return}
   if(tool==="hline")return commit(C,{k:"hline",p:q.p,c:color});
@@ -263,7 +287,9 @@ let clrArm=0;
 $("clr").addEventListener("click",()=>{if(Date.now()-clrArm>3000){clrArm=Date.now();$("clr").textContent="Точно очистить оба графика?";setTimeout(()=>{$("clr").textContent="Очистить"},3000);return}
   clrArm=0;$("clr").textContent="Очистить";Object.values(cols).forEach(C=>{if(C.items.length){C.hist.push(C.items.slice());C.items=[];save(C);paint(C)}})});
 $("fsb").addEventListener("click",()=>{const b=$("chartBox"),on=b.classList.toggle("fs");$("fsb").textContent=on?"✕ Свернуть":"⤢ На весь экран";document.body.style.overflow=on?"hidden":""});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(tool)setTool(null);else if($("chartBox").classList.contains("fs"))$("fsb").click()}});
+document.addEventListener("keydown",e=>{if((e.key==="Delete"||e.key==="Backspace")&&selD&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){e.preventDefault();delSel();return}
+  if(e.key==="Escape"&&selD&&!tool){select(null);return}
+  if(e.key==="Escape"){if(tool)setTool(null);else if($("chartBox").classList.contains("fs"))$("fsb").click()}});
 
 document.querySelectorAll("#filters button").forEach(b=>b.onclick=()=>{F=b.dataset.f;document.querySelectorAll("#filters button").forEach(x=>x.classList.toggle("on",x===b));render()});
 async function load(){
